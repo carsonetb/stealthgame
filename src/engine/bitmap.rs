@@ -14,7 +14,7 @@ pub enum TileNeighbor {
     BottomRight = 7,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Neighbors {
     neighbors: [bool; 8],
 }

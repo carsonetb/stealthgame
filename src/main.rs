@@ -1,13 +1,16 @@
-#![allow(unused)]
+#[allow(unused_imports)]
+#[cfg(debug_assertions)]
+use bevy_dylib;
 
 use bevy::prelude::*;
+use stealthgame::init;
 
-use crate::engine::tilemap::AtlasDB;
-
-mod engine;
+pub mod engine;
 
 fn main() {
     let mut app = App::new();
 
-    app.insert_resource(AtlasDB::new());
+    init(&mut app);
+
+    app.run();
 }
