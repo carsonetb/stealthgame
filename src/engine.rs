@@ -34,6 +34,13 @@ impl Plugin for EnginePlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(tilemap::AtlasDB::new());
 
-        app.add_systems(Update, targets::WalkingTarget::process_system);
+        app.add_systems(
+            Update,
+            (
+                targets::WalkingTarget::process_system,
+                tilemap::TileMap::process_system,
+                tilemap::TileMap::edit_system,
+            ),
+        );
     }
 }

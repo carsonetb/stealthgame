@@ -1,23 +1,8 @@
 use bevy::prelude::*;
-use stealthgame::{
-    engine::tilemap::{AtlasDB, TileMap},
-    init,
-};
+use stealthgame::{engine::tilemap::create_tilemap_system, init};
 
-fn setup(
-    mut commands: Commands,
-    mut db: ResMut<AtlasDB>,
-    mut server: ResMut<AssetServer>,
-    mut layouts: ResMut<Assets<TextureAtlasLayout>>,
-) {
+fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
-
-    let walls = db.load(&mut server, "resources/walls.ron");
-    TileMap::new(walls, UVec2::new(50, 50), Vec2::splat(3.0), 0.0, false).spawn(
-        &mut commands,
-        &mut db,
-        &mut layouts,
-    );
 }
 
 fn main() {
@@ -25,7 +10,13 @@ fn main() {
 
     init(&mut app);
 
-    app.add_systems(Startup, setup);
+    app.add_systems(
+        Startup,
+        (
+            setup,
+            create_tilemap_system(50, 50, 20, 20, "tileset/example.ron"),
+        ),
+    );
 
     app.run();
 }

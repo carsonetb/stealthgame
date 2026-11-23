@@ -1,6 +1,17 @@
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+pub const DIRECTIONS: [IVec2; 8] = [
+    IVec2::new(-1, 1),
+    IVec2::new(0, 1),
+    IVec2::new(1, 1),
+    IVec2::new(-1, 0),
+    IVec2::new(1, 0),
+    IVec2::new(-1, -1),
+    IVec2::new(0, -1),
+    IVec2::new(1, -1),
+];
+
 #[repr(usize)]
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum TileNeighbor {
@@ -14,24 +25,20 @@ pub enum TileNeighbor {
     BottomRight = 7,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Neighbors {
-    neighbors: [bool; 8],
-}
+#[derive(Debug, Deref, DerefMut, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Neighbors(pub [bool; 8]);
 
 impl Neighbors {
     pub fn new() -> Self {
-        Self {
-            neighbors: [false, false, false, false, false, false, false, false],
-        }
+        Self([false, false, false, false, false, false, false, false])
     }
 
     pub fn get(&self, neighbor: TileNeighbor) -> bool {
-        self.neighbors[neighbor as usize]
+        self[neighbor as usize]
     }
 
     pub fn set(&mut self, neighbor: TileNeighbor, value: bool) {
-        self.neighbors[neighbor as usize] = value;
+        self[neighbor as usize] = value;
     }
 }
 
@@ -75,7 +82,8 @@ impl Bitmap {
         if !self.validate(pos) {
             panic!("Attempted to retrieve tile in bitmap that was out of bounds! Position: {pos}");
         }
-        self.values.insert(self.to_index(pos), value);
+        let index = self.to_index(pos);
+        self.values[index] = value;
     }
 
     pub fn get(&self, pos: IVec2) -> Option<bool> {
@@ -87,25 +95,18 @@ impl Bitmap {
     }
 
     pub fn neighbors(&self, pos: IVec2) -> Neighbors {
-        const DIRECTIONS: [IVec2; 8] = [
-            IVec2::new(-1, 1),
-            IVec2::new(0, 1),
-            IVec2::new(1, 1),
-            IVec2::new(-1, 0),
-            IVec2::new(1, 0),
-            IVec2::new(-1, -1),
-            IVec2::new(0, -1),
-            IVec2::new(1, -1),
-        ];
-
         let mut out = Neighbors::new();
         for (i, &dir) in DIRECTIONS.iter().enumerate() {
-            out.neighbors[i] = if let Some(on) = self.get(pos + dir) {
+            out[i] = if let Some(on) = self.get(pos + dir) {
                 on
             } else {
                 false
             };
         }
+        out[0] = out[0] && out[1] && out[3];
+        out[2] = out[2] && out[1] && out[4];
+        out[5] = out[5] && out[3] && out[6];
+        out[7] = out[7] && out[6] && out[4];
         out
     }
 }
