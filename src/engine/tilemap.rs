@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 
+use avian::prelude::*;
+use bevy::prelude::*;
+use tiles::prelude::*;
+
 use bevy::ecs::relationship::RelationshipSourceCollection;
 use bevy::ecs::schedule::ScheduleConfigs;
 use bevy::ecs::system::ScheduleSystem;
-use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-use tiles::prelude::*;
 
 use crate::engine::bitmap::{Bitmap, DIRECTIONS, Neighbors};
-use crate::engine::load_ron;
+use crate::engine::{CursorPos, load_ron};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TileSet {
@@ -80,10 +82,11 @@ pub struct TileMap {
     pub queue: Vec<(Entity, usize)>,
     bitmap: Bitmap,
     tileset: TileSet,
+    pub physics: bool,
 }
 
 impl TileMap {
-    pub fn new(width: usize, height: usize, tileset: TileSet) -> Self {
+    pub fn new(width: usize, height: usize, tileset: TileSet, physics: bool) -> Self {
         Self {
             width,
             height,
@@ -91,6 +94,7 @@ impl TileMap {
             queue: Vec::new(),
             tileset,
             tiles: vec![Entity::new(); width * height],
+            physics,
         }
     }
 
@@ -137,10 +141,13 @@ impl TileMap {
     }
 
     pub fn edit_system(
+        mut commands: Commands,
+        cursor: Res<CursorPos>,
         mouse_input: Res<ButtonInput<MouseButton>>,
         tilemap_query: Query<
             (
                 &mut TileMap,
+                &TileStorage,
                 &TilemapSize,
                 &TilemapGridSize,
                 &TilemapTileSize,
@@ -150,37 +157,25 @@ impl TileMap {
             ),
             Without<Camera2d>,
         >,
-        window_query: Query<&Window>,
-        camera_query: Query<(&Camera, &mut GlobalTransform), With<Camera2d>>,
     ) {
-        let Ok(window) = window_query.single() else {
-            return;
-        };
-        let Ok((camera, camera_transform)) = camera_query.single() else {
-            return;
-        };
-        let Some(cursor) = window
-            .cursor_position()
-            .and_then(|cursor| camera.viewport_to_world_2d(camera_transform, cursor).ok())
-        else {
-            return;
-        };
-
-        for (mut tilemap, map_size, grid_size, tile_size, map_type, anchor, transform) in
+        for (mut tilemap, storage, map_size, grid_size, tile_size, map_type, anchor, transform) in
             tilemap_query
         {
             if let Some(position) = TilePos::from_world_pos(
-                &(cursor / transform.scale().xy()),
+                &(cursor.0 / transform.scale().xy()),
                 map_size,
                 grid_size,
                 tile_size,
                 map_type,
                 anchor,
             ) {
+                let entity = storage.get(&position).unwrap();
                 if mouse_input.pressed(MouseButton::Right) {
+                    commands.entity(entity).insert(ColliderDisabled);
                     tilemap.set_tile_bit(position.into(), false);
                 }
                 if mouse_input.pressed(MouseButton::Left) {
+                    commands.entity(entity).remove::<ColliderDisabled>();
                     tilemap.set_tile_bit(position.into(), true);
                 }
             }
@@ -194,11 +189,12 @@ pub fn create_tilemap_system(
     tile_width: u32,
     tile_height: u32,
     tileset: &'static str,
+    physics: bool,
 ) -> ScheduleConfigs<ScheduleSystem> {
     (move |mut commands: Commands, mut db: ResMut<AtlasDB>, mut assets: ResMut<AssetServer>| {
         db.load(&mut assets, tileset);
         let tileset: TileSet = load_ron(tileset).unwrap();
-        let mut tilemap = TileMap::new(width, height, tileset.clone());
+        let mut tilemap = TileMap::new(width, height, tileset.clone(), physics);
 
         let texture: Handle<Image> = assets.load(tileset.atlas.clone());
         let size = TilemapSize::new(width as u32, height as u32);
@@ -208,16 +204,27 @@ pub fn create_tilemap_system(
         for x in 0..size.x {
             for y in 0..size.y {
                 let position = TilePos::new(x, y);
-                let entity = commands
-                    .spawn(TileBundle {
-                        position,
-                        tilemap_id: TilemapId(entity),
-                        texture_index: TileTextureIndex(
-                            tileset.get_tile_index(tileset.empty) as u32
+                let mut entity = commands.spawn(TileBundle {
+                    position,
+                    tilemap_id: TilemapId(entity),
+                    texture_index: TileTextureIndex(tileset.get_tile_index(tileset.empty) as u32),
+                    ..Default::default()
+                });
+                if physics {
+                    entity.insert((
+                        ColliderDisabled,
+                        DebugRender::none(),
+                        RigidBody::Static,
+                        Collider::rectangle(tile_width as f32 * 2.0, tile_height as f32 * 2.0),
+                        Transform::from_xyz(
+                            (x * tile_width * 2) as f32 - ((width - 1) as u32 * tile_width) as f32,
+                            (y * tile_height * 2) as f32
+                                - ((height - 1) as u32 * tile_height) as f32,
+                            0.0,
                         ),
-                        ..Default::default()
-                    })
-                    .id();
+                    ));
+                }
+                let entity = entity.id();
                 tilemap.tiles[position.y as usize * tilemap.width + position.x as usize] = entity;
                 storage.set(&position, entity);
             }

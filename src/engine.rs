@@ -6,6 +6,8 @@ pub mod fabrik;
 pub mod targets;
 pub mod tilemap;
 
+pub const GRAVITY: f32 = 700.0;
+
 pub fn load_binary<T: DeserializeOwned>(file: &str) -> Option<T> {
     let bytes =
         std::fs::read(format!("assets/{file}")).expect(&format!("Could not find file {file}"));
@@ -32,8 +34,10 @@ pub struct EnginePlugin;
 
 impl Plugin for EnginePlugin {
     fn build(&self, app: &mut App) {
+        app.init_resource::<CursorPos>();
         app.insert_resource(tilemap::AtlasDB::new());
 
+        app.add_systems(PreUpdate, cursor_system);
         app.add_systems(
             Update,
             (
@@ -43,4 +47,27 @@ impl Plugin for EnginePlugin {
             ),
         );
     }
+}
+
+#[derive(Resource, Deref, DerefMut, Default, Debug, Clone, Copy)]
+pub struct CursorPos(pub Vec2);
+
+fn cursor_system(
+    mut pos: ResMut<CursorPos>,
+    windows: Query<&Window>,
+    cameras: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+) {
+    let Ok(window) = windows.single() else {
+        return;
+    };
+    let Ok((camera, camera_transform)) = cameras.single() else {
+        return;
+    };
+    let Some(cursor) = window
+        .cursor_position()
+        .and_then(|cursor| camera.viewport_to_world_2d(camera_transform, cursor).ok())
+    else {
+        return;
+    };
+    *pos = CursorPos(cursor);
 }

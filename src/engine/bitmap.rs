@@ -12,33 +12,12 @@ pub const DIRECTIONS: [IVec2; 8] = [
     IVec2::new(1, -1),
 ];
 
-#[repr(usize)]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
-pub enum TileNeighbor {
-    TopLeft = 0,
-    Top = 1,
-    TopRight = 2,
-    Left = 3,
-    Right = 4,
-    BottomLeft = 5,
-    Bottom = 6,
-    BottomRight = 7,
-}
-
 #[derive(Debug, Deref, DerefMut, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Neighbors(pub [bool; 8]);
 
 impl Neighbors {
     pub fn new() -> Self {
         Self([false, false, false, false, false, false, false, false])
-    }
-
-    pub fn get(&self, neighbor: TileNeighbor) -> bool {
-        self[neighbor as usize]
-    }
-
-    pub fn set(&mut self, neighbor: TileNeighbor, value: bool) {
-        self[neighbor as usize] = value;
     }
 }
 

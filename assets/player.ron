@@ -1,0 +1,6 @@
+Player(
+    leg_length: 25.0,
+    leg_force: 1500.0,
+    width: 15.0,
+    height: 25.0,
+)
