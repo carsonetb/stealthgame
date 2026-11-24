@@ -6,13 +6,15 @@ use bevy::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::engine::{CursorPos, GRAVITY, load_ron};
+use crate::engine::{CursorPos, load_ron};
 
 #[derive(Component, Default, Clone, Serialize, Deserialize)]
 pub struct Player {
     leg_length: f32,
     leg_force: f32,
     leg_damping: f32,
+    angular_force: f32,
+    angular_damping: f32,
     width: f32,
     height: f32,
 }
@@ -33,14 +35,21 @@ pub fn player_spawn(player: &'static str) -> ScheduleConfigs<ScheduleSystem> {
     .into_configs()
 }
 
-pub fn player_stand(q_player: Query<(&Player, &RayHits, &RigidBody, Forces)>) {
-    for (player, hits, body, mut forces) in q_player {
+pub fn player_stand(q_player: Query<(&Player, &RayHits, &Rotation, Forces)>) {
+    for (player, hits, rotation, mut forces) in q_player {
         if let Some(hit) = hits.first() {
             forces.apply_force(Vec2::new(
                 0.0,
                 player.leg_force * (player.leg_length - hit.distance),
             ));
-            forces.apply_force(body.);
+            forces.apply_force(-forces.linear_velocity() * player.leg_damping);
+
+            forces.apply_torque(
+                rotation.angle_between(Rotation::from(0.0)).to_degrees()
+                    * player.angular_force
+                    * hit.distance,
+            );
+            forces.apply_torque(-forces.angular_velocity() * player.angular_damping);
         }
     }
 }
