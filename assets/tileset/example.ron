@@ -1,4 +1,4 @@
-(
+TileSet(
     atlas:"tileset/example.png",
     width:16,
     height:8,

@@ -9,6 +9,7 @@ use tiles::prelude::*;
 use crate::engine::EnginePlugin;
 
 pub mod engine;
+pub mod input;
 pub mod player;
 
 fn setup(mut commands: Commands) {

@@ -1,9 +1,22 @@
 Player(
-    leg_length: 25.0,
-    leg_force: 500.0,
-    leg_damping: 100.0,
-    angular_force: 30.0,
-    angular_damping: 10000.0,
     width: 15.0,
     height: 25.0,
+    mass: 20.0,
+
+    leg_length: 30.0,
+    leg_force: 3000.0,
+    leg_damping: 100.0,
+    walk_force: 30000.0,
+    max_leg_rotation: 15.0,
+
+    angular_force: 250.0,
+    angular_damping: 50000.0,
+
+    hand_mass: 1.0,
+    hand_radius: 3.0,
+    arm_max_distance: 30.0,
+    hand_force: 30.0,
+    hand_damping: 10.0,
+
+    foot_radius: 5.0,
 )

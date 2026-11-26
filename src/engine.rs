@@ -1,3 +1,4 @@
+use avian::prelude::*;
 use bevy::prelude::*;
 use serde::{Serialize, de::DeserializeOwned};
 
@@ -8,6 +9,15 @@ pub mod tilemap;
 
 pub const GRAVITY: f32 = 700.0;
 
+#[derive(PhysicsLayer, Default)]
+pub enum GameLayer {
+    #[default]
+    Default,
+    Player,
+    PlayerArms,
+    PlayerLegs,
+}
+
 pub fn load_binary<T: DeserializeOwned>(file: &str) -> Option<T> {
     let bytes =
         std::fs::read(format!("assets/{file}")).expect(&format!("Could not find file {file}"));
@@ -17,7 +27,13 @@ pub fn load_binary<T: DeserializeOwned>(file: &str) -> Option<T> {
 pub fn load_ron<T: DeserializeOwned>(file: &str) -> Option<T> {
     let string = std::fs::read_to_string(format!("assets/{file}"))
         .expect(&format!("Could not find file {file}"));
-    ron::from_str(&string).ok()
+    match ron::from_str(&string) {
+        Ok(data) => Some(data),
+        Err(e) => {
+            eprintln!("Error loading {file}: {e}");
+            None
+        }
+    }
 }
 
 pub fn store_binary<T: Serialize>(file: &str, value: T) {

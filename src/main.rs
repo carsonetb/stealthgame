@@ -12,7 +12,10 @@ use stealthgame::engine::GRAVITY;
 use stealthgame::init;
 
 use stealthgame::engine::tilemap::create_tilemap_system;
-use stealthgame::player::{player_spawn, player_stand};
+use stealthgame::input::{PlayerInput, movement};
+use stealthgame::player::{
+    player_angle_legs, player_hands, player_move, player_spawn, player_stand,
+};
 
 fn main() {
     let mut app = App::new();
@@ -21,6 +24,7 @@ fn main() {
     init(&mut app);
 
     app.insert_resource(Gravity(Vec2::NEG_Y * GRAVITY));
+    app.init_resource::<PlayerInput>();
     app.add_systems(
         Startup,
         create_tilemap_system(50, 50, 20, 20, "tileset/example.ron", true),
@@ -29,8 +33,12 @@ fn main() {
         Update,
         (
             player_spawn("player.ron").run_if(input_just_pressed(MouseButton::Middle)),
-            player_stand,
+            movement,
         ),
+    );
+    app.add_systems(
+        FixedUpdate,
+        (player_move, player_stand, player_hands, player_angle_legs),
     );
 
     app.run();
