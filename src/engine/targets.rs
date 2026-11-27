@@ -18,6 +18,7 @@ pub struct WalkingTarget {
     pub pos: Vec2,
     pub start: Vec2,
     pub target: Vec2,
+    pub velocity: Vec2,
     pub progress: f32,
     pub state: WalkingState,
     pub step_allowed: bool,
@@ -46,6 +47,7 @@ impl WalkingTarget {
             progress: 0.0,
             state: WalkingState::Hold,
             step_allowed: true,
+            velocity: Vec2::ZERO,
             elapsed: Stopwatch::new(),
         }
     }
@@ -63,21 +65,22 @@ impl WalkingTarget {
                 if (self.pos.distance(self.target) > self.max_distance || false)
                     && self.step_allowed
                 {
-                    println!("walk");
                     self.state = WalkingState::Step;
                     self.start = self.pos;
                     self.progress = 0.0;
+                    self.velocity = Vec2::ZERO;
                 }
             }
             WalkingState::Step => {
+                let last_pos = self.pos;
                 self.progress += self.step_factor * dt.as_secs_f32() * 60.0;
                 self.progress = self.progress.min(1.0);
                 self.pos = self.start.lerp(self.target, self.progress);
-                self.pos.y += step_curve(self.step_height, self.progress);
-                if self.pos.distance(self.target) <= self.step_tolerance {
-                    println!("hold");
+                if self.progress >= 1.0 {
                     self.state = WalkingState::Hold;
                 }
+                self.pos.y += step_curve(self.step_height, self.progress);
+                self.velocity = (self.pos - last_pos) / dt.as_secs_f32();
             }
         }
     }

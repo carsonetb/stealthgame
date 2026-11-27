@@ -19,10 +19,11 @@ use stealthgame::player::{
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins(PhysicsDebugPlugin);
+    // app.add_plugins(PhysicsDebugPlugin);
 
     init(&mut app);
 
+    app.insert_resource(ClearColor(Color::srgb(0.05, 0.05, 0.12)));
     app.insert_resource(Gravity(Vec2::NEG_Y * GRAVITY));
     app.init_resource::<PlayerInput>();
     app.add_systems(

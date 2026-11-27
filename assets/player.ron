@@ -1,10 +1,12 @@
 Player(
+    spritesheet: "player.aseprite",
+
     width: 15.0,
     height: 25.0,
     mass: 20.0,
 
     leg_length: 30.0,
-    leg_force: 3000.0,
+    leg_force: 1000.0,
     leg_damping: 100.0,
     walk_force: 30000.0,
     max_leg_rotation: 15.0,
@@ -22,4 +24,10 @@ Player(
     foot_mass: 2.0,
     foot_radius: 5.0,
     leg_offset: (0.0, -25.0),
+
+    step_max_distance: 35.0,
+    step_max_time: 0.5,
+    step_factor: 0.1,
+    step_tolerance: 10.0,
+    step_height: 5.0,
 )

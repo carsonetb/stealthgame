@@ -1,5 +1,6 @@
 use std::f32::consts::PI;
 
+use aseprite::prelude::*;
 use avian::prelude::*;
 use bevy::{
     ecs::{schedule::ScheduleConfigs, system::ScheduleSystem},
@@ -18,6 +19,8 @@ use crate::{
 
 #[derive(Component, Default, Clone, Serialize, Deserialize)]
 pub struct Player {
+    spritesheet: String,
+
     width: f32,
     height: f32,
     mass: f32,
@@ -41,16 +44,25 @@ pub struct Player {
     foot_radius: f32,
     foot_mass: f32,
     leg_offset: Vec2,
+
+    step_max_distance: f32,
+    step_max_time: f32,
+    step_factor: f32,
+    step_tolerance: f32,
+    step_height: f32,
 }
 
 #[derive(Component, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Hand;
 
+#[derive(Component, Clone, Copy, Serialize, Deserialize)]
+pub struct Leg(Entity);
+
 #[derive(Component, Default, Clone, Copy, Serialize, Deserialize)]
 pub struct Foot;
 
 pub fn player_spawn(player: &'static str) -> ScheduleConfigs<ScheduleSystem> {
-    (move |mut commands: Commands, cursor: Res<CursorPos>| {
+    (move |mut commands: Commands, cursor: Res<CursorPos>, server: Res<AssetServer>| {
         let player: Player = load_ron(player).unwrap();
 
         let cursor = *cursor.clone();
@@ -60,6 +72,7 @@ pub fn player_spawn(player: &'static str) -> ScheduleConfigs<ScheduleSystem> {
                 RigidBody::Dynamic,
                 Collider::capsule(player.width, player.height),
                 Mass(player.mass),
+                Dominance(1),
                 CollisionLayers::new(GameLayer::Player, [GameLayer::Default, GameLayer::Player]),
                 Transform::from_xyz(cursor.x, cursor.y, 0.0),
                 RayCaster::new(Vec2::new(0.0, -player.height), Dir2::NEG_Y)
@@ -68,6 +81,17 @@ pub fn player_spawn(player: &'static str) -> ScheduleConfigs<ScheduleSystem> {
                 player.clone(),
             ))
             .with_children(|parent| {
+                // let player_entity = parent.target_entity();
+
+                parent.spawn((
+                    AseAnimation {
+                        aseprite: server.load(&player.spritesheet),
+                        animation: Animation::tag("stand"),
+                    },
+                    Sprite::default(),
+                    Transform::from_xyz(-3.0, -8.0, 0.0).with_scale(Vec3::splat(3.0)),
+                ));
+
                 let left_hand = parent.spawn(hand_bundle(&player, -player.width - 5.0)).id();
                 parent.spawn(
                     DistanceJoint::new(parent.target_entity(), left_hand)
@@ -82,22 +106,13 @@ pub fn player_spawn(player: &'static str) -> ScheduleConfigs<ScheduleSystem> {
                         .with_local_anchor1(player.arm_offset),
                 );
 
-                let left_leg_start = cursor + 0.0 + Vec2::NEG_Y * player.leg_length;
-                parent.spawn((
-                    Foot,
-                    WalkingTarget::new(35.0, 0.5, 0.1, 10.0, 5.0, left_leg_start),
-                    RayCaster::new(player.leg_offset.with_x(-player.leg_offset.x), Dir2::NEG_Y)
-                        .with_max_distance(player.leg_length)
-                        .with_query_filter(SpatialQueryFilter::from_mask(GameLayer::Default)),
-                ));
-                let right_leg_start = cursor - 20.0 + Vec2::NEG_Y * player.leg_length;
-                parent.spawn((
-                    Foot,
-                    WalkingTarget::new(35.0, 0.5, 0.1, 10.0, 5.0, right_leg_start),
-                    RayCaster::new(player.leg_offset, Dir2::NEG_Y)
-                        .with_max_distance(player.leg_length)
-                        .with_query_filter(SpatialQueryFilter::from_mask(GameLayer::Default)),
-                ));
+                //                 let left_leg_start = cursor + 0.0 + Vec2::NEG_Y * player.leg_length;
+                //                 let foot = parent.spawn(foot_bundle(&player, left_leg_start)).id();
+                //                 parent.spawn(leg_bundle(&player, left_leg_start, player_entity, foot));
+                //
+                //                 let right_leg_start = cursor - 20.0 + Vec2::NEG_Y * player.leg_length;
+                //                 let foot = parent.spawn(foot_bundle(&player, right_leg_start)).id();
+                //                 parent.spawn(leg_bundle(&player, right_leg_start, player_entity, foot));
             });
     })
     .into_configs()
@@ -109,11 +124,49 @@ fn hand_bundle(player: &Player, x_offset: f32) -> impl Bundle {
         RigidBody::Dynamic,
         Collider::circle(player.hand_radius),
         Mass(player.hand_mass),
+        Dominance(1),
         CollisionLayers::new(
             GameLayer::PlayerArms,
             [GameLayer::Default, GameLayer::PlayerArms],
         ),
         Transform::from_xyz(x_offset, 0.0, 0.0),
+    )
+}
+
+fn leg_bundle(player: &Player, start: Vec2, player_entity: Entity, foot: Entity) -> impl Bundle {
+    (
+        Leg(foot),
+        Transform::from_xyz(0.0, 0.0, 0.0),
+        WalkingTarget::new(
+            player.step_max_distance,
+            player.step_max_time,
+            player.step_factor,
+            player.step_tolerance,
+            player.step_height,
+            start,
+        ),
+        RayCaster::new(player.leg_offset, Dir2::NEG_Y)
+            .with_max_distance(player.leg_length)
+            .with_query_filter(SpatialQueryFilter::from_mask(GameLayer::Default)),
+        DistanceJoint::new(player_entity, foot)
+            .with_local_anchor1(player.leg_offset)
+            .with_max_distance(f32::MAX)
+            .with_compliance(0.005),
+    )
+}
+
+fn foot_bundle(player: &Player, start: Vec2) -> impl Bundle {
+    (
+        Foot,
+        RigidBody::Dynamic,
+        Collider::circle(player.foot_radius),
+        Mass(player.foot_mass),
+        Dominance(0),
+        Transform::from_xyz(start.x, start.y, 0.0),
+        CollisionLayers::new(
+            GameLayer::PlayerLegs,
+            [GameLayer::Default, GameLayer::Player, GameLayer::PlayerLegs],
+        ),
     )
 }
 
@@ -186,39 +239,67 @@ pub fn player_hands(
 }
 
 pub fn player_feet(
-    mut gizmos: Gizmos,
+    mut commands: Commands,
     q_player: Query<(&Player, &LinearVelocity, &GlobalTransform, &Children)>,
-    mut q_feet: Query<(&RayCaster, &RayHits, &mut WalkingTarget), With<Foot>>,
+    mut q_legs: Query<(
+        &Leg,
+        &RayCaster,
+        &RayHits,
+        &mut WalkingTarget,
+        &mut DistanceJoint,
+    )>,
+    mut q_feet: Query<(Entity, &RigidBody, &mut Position), (With<Foot>, Without<Player>)>,
 ) {
     for (player, velocity, transform, children) in q_player {
         let mut any_stepping = false;
         let mut stepping_entity = None;
         for &child in children {
-            if let Ok((raycast, hits, mut target)) = q_feet.get_mut(child)
-                && let Some(data) = hits.first()
-            {
-                target.max_distance = velocity.x.abs() * 0.15;
-                let right = data.normal.rotate_angle(-velocity.x.signum() * PI / 2.0);
-                target.target = transform
-                    .transform_point(
-                        (raycast.origin + Vec2::NEG_Y * (data.distance - player.foot_radius))
-                            .extend(0.0),
-                    )
-                    .xy()
-                    + right * velocity.x.abs() * 0.15
-                    + right * 7.0;
-                gizmos.circle_2d(target.pos, player.foot_radius, Color::WHITE);
+            if let Ok((leg, raycast, hits, mut target, mut joint)) = q_legs.get_mut(child) {
+                if let Some(data) = hits.first() {
+                    joint.limits.max = f32::MAX;
 
-                if target.state == WalkingState::Step {
-                    any_stepping = true;
-                    stepping_entity = Some(child);
+                    target.max_distance = velocity.x.abs() * 0.15;
+                    let right = data.normal.rotate_angle(-velocity.x.signum() * PI / 2.0);
+                    target.target = transform
+                        .transform_point(
+                            (raycast.origin + Vec2::NEG_Y * (data.distance - player.foot_radius))
+                                .extend(0.0),
+                        )
+                        .xy()
+                        + right * velocity.x.abs() * 0.15;
+
+                    if let Ok((entity, &typ, mut position)) = q_feet.get_mut(leg.0) {
+                        if typ == RigidBody::Dynamic {
+                            commands.entity(entity).insert(RigidBody::Kinematic);
+                        }
+                        **position = target.pos;
+                    }
+
+                    if target.state == WalkingState::Step {
+                        any_stepping = true;
+                        stepping_entity = Some(child);
+                    }
+                } else {
+                    joint.limits.max = player.leg_length;
+
+                    let mut pos = target.pos;
+                    if let Ok((entity, &typ, position)) = q_feet.get_mut(leg.0) {
+                        if typ == RigidBody::Kinematic {
+                            // **velocity = target.velocity / 1.7;
+                            commands.entity(entity).insert(RigidBody::Dynamic);
+                        }
+                        pos = **position;
+                    }
+                    target.state = WalkingState::Hold;
+                    target.step_allowed = false;
+                    target.pos = pos;
                 }
             }
         }
 
         if !any_stepping {
             for &child in children {
-                if let Ok((_, _, target)) = q_feet.get(child) {
+                if let Ok((_, _, _, target, _)) = q_legs.get(child) {
                     if target.should_step() {
                         any_stepping = true;
                         stepping_entity = Some(child);
@@ -229,11 +310,11 @@ pub fn player_feet(
         }
 
         for &child in children {
-            if let Ok((_, _, mut target)) = q_feet.get_mut(child) {
+            if let Ok((_, _, _, mut target, _)) = q_legs.get_mut(child) {
                 if Some(child) == stepping_entity {
                     target.step_allowed = true;
                 } else {
-                    target.step_allowed = dbg!(!any_stepping);
+                    target.step_allowed = !any_stepping;
                 }
             }
         }

@@ -2,6 +2,7 @@
 #[cfg(debug_assertions)]
 use bevy_dylib;
 
+use aseprite::prelude::*;
 use avian::prelude::*;
 use bevy::prelude::*;
 use tiles::prelude::*;
@@ -24,5 +25,6 @@ pub fn init(app: &mut App) {
         TilemapPlugin,
         PhysicsPlugins::default(),
         EnginePlugin,
+        AsepriteUltraPlugin,
     ));
 }
