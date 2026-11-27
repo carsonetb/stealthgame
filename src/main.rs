@@ -14,7 +14,7 @@ use stealthgame::init;
 use stealthgame::engine::tilemap::create_tilemap_system;
 use stealthgame::input::{PlayerInput, movement};
 use stealthgame::player::{
-    player_angle_legs, player_hands, player_move, player_spawn, player_stand,
+    player_angle_legs, player_feet, player_hands, player_move, player_spawn, player_stand,
 };
 
 fn main() {
@@ -38,7 +38,13 @@ fn main() {
     );
     app.add_systems(
         FixedUpdate,
-        (player_move, player_stand, player_hands, player_angle_legs),
+        (
+            player_move,
+            player_stand,
+            player_hands,
+            player_feet,
+            player_angle_legs,
+        ),
     );
 
     app.run();

@@ -3,7 +3,7 @@ use std::time::Duration;
 use bevy::{prelude::*, time::Stopwatch};
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum WalkingState {
     Hold,
     Step,
@@ -16,9 +16,12 @@ pub struct WalkingTarget {
     pub step_factor: f32,
     pub step_tolerance: f32,
     pub pos: Vec2,
+    pub start: Vec2,
     pub target: Vec2,
+    pub progress: f32,
     pub state: WalkingState,
     pub step_allowed: bool,
+    pub step_height: f32,
     elapsed: Stopwatch,
 }
 
@@ -28,6 +31,7 @@ impl WalkingTarget {
         max_time: f32,
         step_factor: f32,
         step_tolerance: f32,
+        step_height: f32,
         pos: Vec2,
     ) -> Self {
         Self {
@@ -35,12 +39,19 @@ impl WalkingTarget {
             max_time,
             step_factor,
             step_tolerance,
+            step_height,
             pos,
+            start: pos,
             target: pos,
+            progress: 0.0,
             state: WalkingState::Hold,
             step_allowed: true,
             elapsed: Stopwatch::new(),
         }
+    }
+
+    pub fn should_step(&self) -> bool {
+        self.pos.distance(self.target) > self.max_distance
     }
 
     pub fn process(&mut self, target: Vec2, dt: Duration) {
@@ -49,19 +60,22 @@ impl WalkingTarget {
 
         match self.state {
             WalkingState::Hold => {
-                if (self.pos.distance(self.target) > self.max_distance
-                    || self.elapsed.elapsed_secs() > self.max_time)
+                if (self.pos.distance(self.target) > self.max_distance || false)
                     && self.step_allowed
                 {
+                    println!("walk");
                     self.state = WalkingState::Step;
+                    self.start = self.pos;
+                    self.progress = 0.0;
                 }
             }
             WalkingState::Step => {
-                self.pos = self.pos.lerp(
-                    self.target,
-                    1.0 - (-self.step_factor * dt.as_secs_f32()).exp(),
-                );
-                if self.pos.distance(self.target) < self.step_tolerance {
+                self.progress += self.step_factor * dt.as_secs_f32() * 60.0;
+                self.progress = self.progress.min(1.0);
+                self.pos = self.start.lerp(self.target, self.progress);
+                self.pos.y += step_curve(self.step_height, self.progress);
+                if self.pos.distance(self.target) <= self.step_tolerance {
+                    println!("hold");
                     self.state = WalkingState::Hold;
                 }
             }
@@ -74,4 +88,9 @@ impl WalkingTarget {
             target.process(target_pos, time.delta());
         }
     }
+}
+
+fn step_curve(height: f32, d: f32) -> f32 {
+    // https://www.desmos.com/calculator/ugvgeuod7s
+    -4.0 * height * (d - 0.5).powi(2) + height
 }

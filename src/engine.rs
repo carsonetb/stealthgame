@@ -50,16 +50,17 @@ pub struct EnginePlugin;
 
 impl Plugin for EnginePlugin {
     fn build(&self, app: &mut App) {
+        app.init_gizmo_group::<DefaultGizmoConfigGroup>();
         app.init_resource::<CursorPos>();
         app.insert_resource(tilemap::AtlasDB::new());
 
         app.add_systems(PreUpdate, cursor_system);
+        app.add_systems(Update, tilemap::TileMap::edit_system);
         app.add_systems(
-            Update,
+            FixedUpdate,
             (
                 targets::WalkingTarget::process_system,
                 tilemap::TileMap::process_system,
-                tilemap::TileMap::edit_system,
             ),
         );
     }
