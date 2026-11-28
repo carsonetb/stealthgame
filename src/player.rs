@@ -182,6 +182,23 @@ pub fn player_angle_legs(q_player: Query<(&Player, &Transform, &mut RayCaster)>)
     }
 }
 
+pub fn player_animate(
+    q_player: Query<(&LinearVelocity, &Children), With<Player>>,
+    mut q_animation: Query<(&mut AseAnimation, &mut Transform)>,
+) {
+    for (velocity, children) in q_player {
+        for &child in children {
+            if let Ok((mut animation, mut transform)) = q_animation.get_mut(child) {
+                if velocity.x.signum() < 0.0 {
+                    transform.scale.x = -3.0;
+                } else {
+                    transform.scale.x = 3.0;
+                }
+            }
+        }
+    }
+}
+
 pub fn player_move(
     input: Res<PlayerInput>,
     q_player: Query<(&Player, &GlobalTransform, &RayHits, Forces)>,

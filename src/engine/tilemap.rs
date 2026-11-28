@@ -127,57 +127,54 @@ impl TileMap {
             }
         }
     }
+}
 
-    pub fn process_system(
-        q_tileset: Query<&mut TileMap>,
-        mut q_tile: Query<&mut TileTextureIndex>,
-    ) {
-        for mut tileset in q_tileset {
-            for (entity, index) in tileset.queue.drain(..) {
-                let mut tile = q_tile.get_mut(entity).unwrap();
-                tile.0 = index as u32
-            }
+pub fn process(q_tileset: Query<&mut TileMap>, mut q_tile: Query<&mut TileTextureIndex>) {
+    for mut tileset in q_tileset {
+        for (entity, index) in tileset.queue.drain(..) {
+            let mut tile = q_tile.get_mut(entity).unwrap();
+            tile.0 = index as u32
         }
     }
+}
 
-    pub fn edit_system(
-        mut commands: Commands,
-        cursor: Res<CursorPos>,
-        mouse_input: Res<ButtonInput<MouseButton>>,
-        tilemap_query: Query<
-            (
-                &mut TileMap,
-                &TileStorage,
-                &TilemapSize,
-                &TilemapGridSize,
-                &TilemapTileSize,
-                &TilemapType,
-                &TilemapAnchor,
-                &GlobalTransform,
-            ),
-            Without<Camera2d>,
-        >,
-    ) {
-        for (mut tilemap, storage, map_size, grid_size, tile_size, map_type, anchor, transform) in
-            tilemap_query
-        {
-            if let Some(position) = TilePos::from_world_pos(
-                &(cursor.0 / transform.scale().xy()),
-                map_size,
-                grid_size,
-                tile_size,
-                map_type,
-                anchor,
-            ) {
-                let entity = storage.get(&position).unwrap();
-                if mouse_input.pressed(MouseButton::Right) {
-                    commands.entity(entity).insert(ColliderDisabled);
-                    tilemap.set_tile_bit(position.into(), false);
-                }
-                if mouse_input.pressed(MouseButton::Left) {
-                    commands.entity(entity).remove::<ColliderDisabled>();
-                    tilemap.set_tile_bit(position.into(), true);
-                }
+pub fn edit(
+    mut commands: Commands,
+    cursor: Res<CursorPos>,
+    mouse_input: Res<ButtonInput<MouseButton>>,
+    tilemap_query: Query<
+        (
+            &mut TileMap,
+            &TileStorage,
+            &TilemapSize,
+            &TilemapGridSize,
+            &TilemapTileSize,
+            &TilemapType,
+            &TilemapAnchor,
+            &GlobalTransform,
+        ),
+        Without<Camera2d>,
+    >,
+) {
+    for (mut tilemap, storage, map_size, grid_size, tile_size, map_type, anchor, transform) in
+        tilemap_query
+    {
+        if let Some(position) = TilePos::from_world_pos(
+            &(cursor.0 / transform.scale().xy()),
+            map_size,
+            grid_size,
+            tile_size,
+            map_type,
+            anchor,
+        ) {
+            let entity = storage.get(&position).unwrap();
+            if mouse_input.pressed(MouseButton::Right) {
+                commands.entity(entity).insert(ColliderDisabled);
+                tilemap.set_tile_bit(position.into(), false);
+            }
+            if mouse_input.pressed(MouseButton::Left) {
+                commands.entity(entity).remove::<ColliderDisabled>();
+                tilemap.set_tile_bit(position.into(), true);
             }
         }
     }

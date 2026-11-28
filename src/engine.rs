@@ -55,13 +55,9 @@ impl Plugin for EnginePlugin {
         app.insert_resource(tilemap::AtlasDB::new());
 
         app.add_systems(PreUpdate, cursor_system);
-        app.add_systems(Update, tilemap::TileMap::edit_system);
         app.add_systems(
             FixedUpdate,
-            (
-                targets::WalkingTarget::process_system,
-                tilemap::TileMap::process_system,
-            ),
+            (targets::WalkingTarget::process_system, tilemap::process),
         );
     }
 }

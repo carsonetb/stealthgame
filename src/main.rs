@@ -8,13 +8,14 @@ use avian::prelude::*;
 use bevy::input::common_conditions::*;
 use bevy::prelude::*;
 
-use stealthgame::engine::GRAVITY;
+use stealthgame::engine::{GRAVITY, tilemap};
 use stealthgame::init;
 
 use stealthgame::engine::tilemap::create_tilemap_system;
 use stealthgame::input::{PlayerInput, movement};
 use stealthgame::player::{
-    player_angle_legs, player_feet, player_hands, player_move, player_spawn, player_stand,
+    player_angle_legs, player_animate, player_feet, player_hands, player_move, player_spawn,
+    player_stand,
 };
 
 fn main() {
@@ -34,6 +35,7 @@ fn main() {
         Update,
         (
             player_spawn("player.ron").run_if(input_just_pressed(MouseButton::Middle)),
+            tilemap::edit,
             movement,
         ),
     );
@@ -41,6 +43,7 @@ fn main() {
         FixedUpdate,
         (
             player_move,
+            player_animate,
             player_stand,
             player_hands,
             player_feet,
